@@ -1,0 +1,195 @@
+HOW TO USE THE ALEXANDRIA UNIVERSITY PIPELINES
+================================================
+
+RESUME AN INTERRUPTED XLSX RUN
+----------------------------
+Unexpected subject errors are checkpointed and skipped without retry. The
+script confirms logout, logs in again using the same in-memory credentials and
+scope in the same open Chrome tab, and continues with the next subject for that
+student. Failure to confirm logout or reconnect stops the run; Chrome stays open.
+Confirmed successes are retained even if returning to the student form fails.
+Skipped unconfirmed subjects are also skipped by normal --resume. Before using
+--retry-failed on them, verify the portal and update those cells to succeeded,
+Failed: <confirmed reason>, or pending. CSV checkpoint errors stop the run.
+
+Close Excel before running. Keep the original Registration log sheet.
+Use --resume to skip succeeded and confirmed Failed cells and process only
+blank/pending requested subjects. Use --start-student ID to start at that
+student inclusively, completing its remaining subjects before the next student.
+--limit N counts students starting at --start-student, including completed rows.
+
+python alexu_batch_add_course_registration.py registeration.xlsx --program "برنامج النظم الذكية" --year "2026/2027" --semester Fall --resume --start-student 2403258321
+
+Replace the ID above with your last student. Omit --start-student to resume all
+unprocessed requests automatically. Add --limit 2 for only two students from
+the selected starting position. Add --retry-failed only if you want to retry
+confirmed failures; succeeded subjects are always skipped.
+
+If a log cell says outcome unconfirmed, verify that student/subject on the
+portal first. Set the cell to succeeded if it registered, Failed: <reason> for
+a confirmed rejection, or pending if confirmed not registered and you want to
+retry. The script will not blindly repeat an unconfirmed submission.
+
+Short-lived errors in #alertify-logs are retained by an in-page observer,
+including center text after the notification disappears. A confirmed error
+is logged as Failed: <reason> and the next subject is processed.
+
+XLSX MULTI-SUBJECT REGISTRATION (2026/2027, Fall)
+------------------------------------------------
+Install dependencies from requirements.txt (now includes openpyxl).
+Keep registeration.xlsx closed in Excel. Column A is ID; remaining headers
+are portal course labels including course code, year, semester and group.
+Mark requested subjects with 1; leave other cells blank or 0.
+
+First two students for the intelligent-systems program:
+
+python alexu_batch_add_course_registration.py registeration.xlsx --program "برنامج النظم الذكية" --year "2026/2027" --semester Fall --limit 2
+
+Credentials use the secure prompt or ALEXU_USERNAME / ALEXU_PASSWORD.
+The script adds a Registration log worksheet to the SAME workbook and saves
+after every subject. Unrequested cells stay blank; unprocessed requests are
+pending. Results are succeeded, Failed: already registered or group closed,
+or Failed: followed by the portal error notification's center text.
+Matching tolerates spacing and small spelling errors while protecting course
+code, year, term and group. Ambiguous matches are never submitted.
+It stays on each student's registration page until all requests are handled.
+Omit --limit to process all students; use --sheet to name an input worksheet.
+A workbook with an existing Registration log requires --resume. Preserve this
+log rather than preparing a fresh copy when continuing an interrupted run.
+
+NEVER CLOSE THE WEBSITE DURING AN ACTIVE SESSION. LOG OUT AND CONFIRM LOGOUT
+FIRST. The scripts never close Chrome, including on errors. Logout confirmation
+requires the visible username/password login fields and absence of the avatar.
+If confirmation fails, leave the website open and log out manually.
+
+Year and semester are configurable in the registration script. Scope selection
+tolerates punctuation/spacing differences but never silently selects a different
+year or term. Missing options are reported with the observed portal choices.
+The completed-hours pipeline supports the extra student report-choice page
+seen in the saved Fall failure screenshot and the Students Reports label.
+
+The historical single-course CSV instructions below remain available, but
+references to 2025/2026 Summer are outdated: current defaults are 2026/2027 Fall.
+
+Requirements
+------------
+
+1. Python 3.10 or later
+2. Google Chrome
+3. Install the required packages:
+
+   python -m pip install selenium pandas pypdf
+
+4. Close the input CSV in Excel before running a pipeline. Excel may lock the
+   file and prevent the script from updating it.
+
+
+Input CSV
+---------
+
+The CSV must contain a unique, non-empty student_id column. Other columns are
+preserved.
+
+Example:
+
+student_id,name
+2401241123,Student One
+2401241158,Student Two
+========================================
+IMPORTANT
+THE student need to be split based on the department, both scripts need to work on only one department at a time
+PIPELINE 1: ADD COURSE REGISTRATION
+===================================
+
+Run:
+
+   python alexu_batch_add_course_registration.py data.csv
+
+The script will:
+
+1. Ask for the portal username.
+2. Ask for the password using a hidden password prompt.
+3. Show the numbered student-program menu.
+4. Open visible Chrome and log in.
+5. Use the first valid student to display all available courses.
+6. Ask you to select one course by number.
+7. Attempt to register the selected course for every student in the CSV.
+8. Add or update this CSV column:
+
+   course_registration_status
+
+Possible final values:
+
+   succeeded
+   failed
+
+A row is marked failed when, for example:
+
+- The student ID does not exist in the selected program.
+- The selected course is unavailable for that student.
+- The portal rejects the registration.
+- A portal or browser error occurs for that student.
+
+The CSV is checkpointed after every student. During an incomplete or
+interrupted run, unprocessed rows may temporarily contain pending.
+
+Important: Selecting a course and continuing authorizes the script to submit
+real course registrations for all valid students in the CSV.
+
+
+PIPELINE 2: GET COMPLETED STUDENT HOURS
+=======================================
+
+Run:
+
+   python student_completed_hours_pipeline.py data.csv
+
+The script will:
+
+1. Ask for the portal username.
+2. Ask for the password using a hidden password prompt.
+3. Show the numbered student-program menu.
+4. Open visible Chrome and log in.
+5. Select academic year 2025/2026 and semester Summer.
+6. Retrieve each student's lecture-table report.
+7. Extract the value shown as "Completed: X Hrs".
+8. Add or update the completed_hours column in the input CSV.
+
+When a student ID does not exist in the selected program, completed_hours is
+set to:
+
+   unknown
+
+Valid PDF reports are saved as:
+
+   output/pdf/<student_id>.pdf
+
+The completed-hours CSV is replaced only after the complete batch succeeds.
+
+
+Optional Non-Interactive Settings
+=================================
+
+The completed-hours pipeline and the shared login/program logic support:
+
+   $env:ALEXU_USERNAME="your_username"
+   $env:ALEXU_PASSWORD="your_password"
+   $env:ALEXU_PROGRAM="برنامج الحوسبة وعلوم البيانات"
+
+or you can let the script ask you for the username, password, program
+
+You can inspect additional command-line options with:
+
+   python student_completed_hours_pipeline.py --help
+   python alexu_batch_add_course_registration.py --help
+
+
+Browser Behavior
+================
+
+- Chrome runs visibly.
+- Portal waits allow slow pages and DOM updates to finish.
+- Both pipelines attempt to log out normally.
+- The Chrome tab is deliberately left open.
+- Do not manually close or interfere with the controlled tab while a pipeline
+  is running.
