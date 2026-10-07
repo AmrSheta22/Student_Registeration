@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<!-- saved from url=(0124)https://gs.alexu.edu.eg/FCDS/registrar_delete.php?un=6130cd729530abe7359b408da46bf544&scode=e25995a26cb98564ede9586e930b8e90 -->
+<html dir="ltr" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style>body {transition: opacity ease-in 0.2s; } 
+body[unresolved] {opacity: 0; display: block; overflow: hidden; position: relative; } 
+</style>
+	   	
+	   	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	   	<!-- Tell the browser to be responsive to screen width -->
+	   	<meta name="viewport" content="width=device-width, initial-scale=1">
+	   	<meta name="description" content="">
+	   	<meta name="author" content="">
+	   	<!-- Favicon icon -->
+	   	<link rel="icon" type="image/png" sizes="16x16" href="https://gs.alexu.edu.eg/FCDS/assets/images/favicon.png">
+	   	<title>Delete Course Registration Page</title>
+	   	<!-- Custom CSS -->
+	   	<link rel="stylesheet" type="text/css" href="./Delete Course Registration Page_files/select2.min.css">
+	   	<link rel="stylesheet" type="text/css" href="./Delete Course Registration Page_files/multicheck.css">
+	   	<link href="./Delete Course Registration Page_files/dataTables.bootstrap4.css" rel="stylesheet">
+	   	<link href="./Delete Course Registration Page_files/sweetalert2.min.css" rel="stylesheet">
+	   	<link href="./Delete Course Registration Page_files/style.min.css" rel="stylesheet">
+	   	<!-- JavaScripts -->
+	   	<script src="./Delete Course Registration Page_files/html5shiv.js.download"></script>
+	   	<script src="./Delete Course Registration Page_files/respond.min.js.download"></script>
+	   	<script src="./Delete Course Registration Page_files/sweetalert2.min.js.download"></script>
+		
+		<script src="./Delete Course Registration Page_files/html2canvas.js.download"></script>
+
+<style>
+	html {
+		position: fixed;
+		height: 100%;
+		overflow: hidden;
+	}
+
+	body {
+		font-family: sans-serif;
+		margin: 0;
+		width: 100vw;
+		height: 100vh;
+		overflow-y: auto;
+		overflow-x: hidden;
+		-webkit-overflow-scrolling: touch;
+	}
+</style>
+
+<script>
+	function screenShot() {
+      var container = document.getElementById("canvas");
+      html2canvas(container, { allowTaint: true }).then(function (canvas) {
+
+          var link = document.createElement("a");
+          document.body.appendChild(link);
+          link.download = "screenShot.png";
+          link.href = canvas.toDataURL();
+          link.target = '_blank';
+          link.click();
+      });
+  }
+</script>
+	<script>
+	   function deleteRecord() {
+			var enc_sc = "e25995a26cb98564ede9586e930b8e90";
+			var course = 'POM100';
+			var ayear = '';
+			var semester = '';
+			var r_id = $("#courseBox").val();
+			var enc_un = "6130cd729530abe7359b408da46bf544";
+
+			Swal.fire({
+				title: 'Delete Course Registration: '+course+' '+semester+' '+ayear,
+				text: "حذف تسجيل المقرر",
+				type: 'warning',
+				showCancelButton: true,
+				confirmButtonColor: '#3085d6',
+				cancelButtonColor: '#d33',
+				confirmButtonText: 'Yes, delete it!'
+			}).then((result) => {
+				if (result.value) {
+					$.ajax({
+						url:'delete_cr.php?un='+enc_un+'&id='+r_id,
+						complete: function () {
+							window.location.href = "registrar_delete.php?un="+enc_un+"&scode="+enc_sc;
+						},
+						error: function () {
+							window.location.href = "registrar_delete.php?un="+enc_un+"&scode="+enc_sc;
+						}
+					});
+				}
+			})
+		}
+	</script><style type="text/css">.jqstooltip { position: absolute;left: 0px;top: 0px;visibility: hidden;background: rgb(0, 0, 0) transparent;background-color: rgba(0,0,0,0.6);filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#99000000, endColorstr=#99000000);-ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#99000000, endColorstr=#99000000)";color: white;font: 10px arial, san serif;text-align: left;white-space: nowrap;padding: 5px;border: 1px solid white;z-index: 10000;}.jqsfield { color: white;font: 10px arial, san serif;text-align: left;}</style></head>
+
+	
+	<body>
+   		<!-- ============================================================== -->
+		<!-- Preloader - style you can find in spinners.css -->
+		<!-- ============================================================== -->
+		<div class="preloader" style="display: none;">
+      		<div class="lds-ripple">
+            	<div class="lds-pos"></div>
+            	<div class="lds-pos"></div>
+      		</div>
+   		</div>
+		<!-- ============================================================== -->
+		<!-- Main wrapper - style you can find in pages.scss -->
+		<!-- ============================================================== -->
+		<div id="main-wrapper" data-sidebartype="full">
+      	<!-- ============================================================== -->
+			<!-- Topbar header - style you can find in pages.scss -->
+			<!-- ============================================================== -->
+			<header class="topbar" data-navbarbg="skin5">
+				<!-- ============================================================== -->
+	         	<!-- Left Sidebar - style you can find in sidebar.scss  -->
+	         	<!-- ============================================================== -->
+	         	<aside class="left-sidebar position-fixed" data-sidebarbg="skin5">
+		         	<!-- ============================================================== -->
+					<!-- Logo -->
+					<!-- ============================================================== -->
+					<a href="https://gs.alexu.edu.eg/FCDS/members.php?un=6130cd729530abe7359b408da46bf544">
+					   	<!-- Logo icon -->
+					   	<span>
+					   		<center>
+								<img style="max-width:33%; height:auto;" src="./Delete Course Registration Page_files/logo-icon.png"><br>
+								<img style="max-width:33%; height:auto;" src="./Delete Course Registration Page_files/logo-text.png">
+							</center>
+						</span>
+					</a>
+					<!-- ============================================================== -->
+					<!-- End Logo -->
+					<!-- ============================================================== -->
+	            	<!-- Sidebar scroll-->
+	            	<div class="scroll-sidebar">
+	               		<!-- Sidebar navigation-->
+						<nav class="sidebar-nav">
+	                		<ul id="sidebarnav" class="p-t-30">
+	                    		<li class="sidebar-item"> <a class="sidebar-link" href="https://gs.alexu.edu.eg/FCDS/members.php?un=6130cd729530abe7359b408da46bf544" aria-expanded="false"><i class="fas fa-home"></i><span class="hide-menu">Control</span></a></li>
+	                    		<li class="sidebar-item"> <a class="sidebar-link" href="https://gs.alexu.edu.eg/FCDS/registrar_form.php?un=6130cd729530abe7359b408da46bf544" aria-expanded="false"><i class="fas fa-plus"></i><span class="hide-menu">Add Registration</span></a></li>
+								<li class="sidebar-item"> <a class="sidebar-link" href="https://gs.alexu.edu.eg/FCDS/registrar_remove.php?un=6130cd729530abe7359b408da46bf544" aria-expanded="false"><i class="fas fa-trash"></i><span class="hide-menu">Remove Registration</span></a></li>
+								<li class="sidebar-item"> <a class="sidebar-link" href="https://gs.alexu.edu.eg/FCDS/registrar_withdraw.php?un=6130cd729530abe7359b408da46bf544" aria-expanded="false"><i class="fas fa-times"></i><span class="hide-menu">Withdraw Registration</span></a></li>
+								<li class="sidebar-item"> <a class="sidebar-link" href="https://gs.alexu.edu.eg/FCDS/registrar_form_lab.php?un=6130cd729530abe7359b408da46bf544" aria-expanded="false"><i class="fas fa-desktop"></i><span class="hide-menu">Add Lab Registration</span></a></li>
+								<li class="sidebar-item"> <a class="sidebar-link" href="https://gs.alexu.edu.eg/FCDS/registrar_remove_lab.php?un=6130cd729530abe7359b408da46bf544" aria-expanded="false"><i class="fas fa-trash"></i><span class="hide-menu">Remove Lab Registration</span></a></li>
+	                    		<li class="sidebar-item"> <a class="sidebar-link" href="https://gs.alexu.edu.eg/FCDS/registrar_report.php?un=6130cd729530abe7359b408da46bf544" aria-expanded="false"><i class="fas fa-folder-open"></i><span class="hide-menu">Students Reports</span></a></li>
+								<li class="sidebar-item"> <a class="sidebar-link" href="https://gs.alexu.edu.eg/FCDS/logout.php?un=6130cd729530abe7359b408da46bf544" aria-expanded="false"><i class="fa fa-power-off"></i><span class="hide-menu">Exit</span></a></li>
+	                		</ul>
+						</nav>
+	               		<!-- End Sidebar navigation -->
+	            	</div>
+		            <!-- End Sidebar scroll-->
+		      	</aside>
+				<!-- ============================================================== -->
+				<!-- End Left Sidebar - style you can find in sidebar.scss  -->
+				<!-- ============================================================== -->
+				
+	            <nav class="navbar top-navbar navbar-expand-md navbar-dark fixed-top">
+	               	<div class="navbar-header" data-logobg="skin5">
+	                  	<!-- This is for the sidebar toggle which is visible on mobile only -->
+	                  	<a class="nav-toggler waves-effect waves-light d-block d-md-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+	                  	<!-- ============================================================== -->
+	                  	<!-- Toggle which is visible on mobile only -->
+	                  	<!-- ============================================================== -->
+	                  	<a class="topbartoggler d-block d-md-none waves-effect waves-light" href="javascript:void(0)" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
+	               	</div>
+	               	<div class="navbar-collapse collapse" id="navbarSupportedContent" data-navbarbg="skin5">
+	                  	<!-- ============================================================== -->
+	                  	<!-- toggle and nav items -->
+	                  	<!-- ============================================================== -->
+	                  	<ul class="navbar-nav float-left mr-auto">
+	                     	<li class="nav-item d-none d-md-block"><a class="nav-link sidebartoggler waves-effect waves-light" href="javascript:void(0)" data-sidebartype="mini-sidebar"><i class="mdi mdi-menu font-24"></i></a></li>
+	                     	<li class="nav-item"><a class="nav-link waves-effect waves-light" href="javascript:screenShot()" data-sidebartype="mini-sidebar"><i class="mdi mdi-light mdi-camera mdi-active font-24"></i></a></li>
+							<li class="nav-item"><a class="nav-link waves-effect waves-light" href="https://gs.alexu.edu.eg/FCDS/registrar_delete.php?un=6130cd729530abe7359b408da46bf544&amp;scode=e25995a26cb98564ede9586e930b8e90" data-sidebartype="mini-sidebar"><i class="mdi mdi-blank mdi-inactive font-24"></i></a></li>
+							<li class="nav-item"><a class="nav-link waves-effect waves-light" href="https://gs.alexu.edu.eg/FCDS/registrar_delete.php?un=6130cd729530abe7359b408da46bf544&amp;scode=e25995a26cb98564ede9586e930b8e90" data-sidebartype="mini-sidebar"><i class="mdi mdi-blank mdi-inactive font-24"></i></a></li>
+	                  	</ul>
+	                  	<div class="navbar-nav float-left mr-auto" style="text-align: center; font-weight: bold; font-style: italic; font-size: small; height: 40px; color:white;">
+							Faculty of Computers and Data Science : Deanship of Registration<br>كلية الحاسبات و علوم البيانات : عمادة التسجيل						</div>
+	                  	<!-- ============================================================== -->
+	                  	<!-- Right side toggle and nav items -->
+	                  	<!-- ============================================================== -->
+	                  	<ul class="navbar-nav float-right">
+		                <!-- ============================================================== -->
+	                    <!-- App Menu -->
+	                    <!-- ============================================================== -->
+		                <li class="nav-item dropdown">
+	                        <a class="nav-link dropdown-toggle text-muted waves-effect waves-dark pro-pic" href="https://gs.alexu.edu.eg/FCDS/registrar_delete.php?un=6130cd729530abe7359b408da46bf544&amp;scode=e25995a26cb98564ede9586e930b8e90" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <i class="mdi mdi-light mdi-arrow-down-drop-circle-outline mdi-inactive font-24"></i></a>
+	                    </li>
+		                <!-- ============================================================== -->
+		                <!-- End App Menu -->
+		                <!-- ============================================================== -->
+						
+		                <!-- ============================================================== -->
+		                <!-- Messages -->
+		                <!-- ============================================================== -->
+						<li class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle waves-effect waves-dark" href="https://gs.alexu.edu.eg/FCDS/registrar_delete.php?un=6130cd729530abe7359b408da46bf544&amp;scode=e25995a26cb98564ede9586e930b8e90" id="2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <i class="mdi mdi-bell mdi-light mdi-inactive font-24"></i></a>						</li>
+		                <!-- ============================================================== -->
+		                <!-- End Messages -->
+		                <!-- ============================================================== -->
+						
+		                <!-- ============================================================== -->
+		                <!-- User profile -->
+		                <!-- ============================================================== -->
+		                  	<li class="nav-item dropdown">
+		                     	<a class="nav-link dropdown-toggle text-muted waves-effect waves-dark pro-pic" href="https://gs.alexu.edu.eg/FCDS/registrar_delete.php?un=6130cd729530abe7359b408da46bf544&amp;scode=e25995a26cb98564ede9586e930b8e90" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="./Delete Course Registration Page_files/Avatar.jpg" alt="user" class="rounded-circle" width="24"></a>
+		                     	<div class="dropdown-menu dropdown-menu-right user-dd animated">
+		                        	<a class="dropdown-item" href="javascript:void(0)"><i class="ti-user m-r-5 m-l-5"></i>Registrar</a>
+		                        	<a class="dropdown-item" href="https://gs.alexu.edu.eg/FCDS/logout.php?un=6130cd729530abe7359b408da46bf544"><i class="fa fa-power-off m-r-5 m-l-5"></i>Logout</a>
+		                     	</div>
+		                  	</li>
+		                  	<!-- ============================================================== -->
+		                  	<!-- User profile -->
+		                  	<!-- ============================================================== -->
+	                  	</ul>
+	               	</div>
+	            </nav>
+	        </header>
+         	<!-- ============================================================== -->
+         	<!-- End Topbar header -->
+         	<!-- ============================================================== -->
+			
+			<!-- ============================================================== -->
+			<!-- Page wrapper  -->
+			<!-- ============================================================== -->
+         	<div id="canvas" class="page-wrapper">
+				<div style="text-align: center; color: red; font-weight: bold; font-style: italic; font-size: large; height: 28px;">
+					حذف تسجيل مقرر دراسي لطالب في برنامج الحوسبة وعلوم البيانات -&gt; Fall - 2026/2027				</div>
+            	<!-- ============================================================== -->
+            	<!-- Bread crumb and right sidebar toggle -->
+            	<!-- ============================================================== -->
+            	<div class="page-breadcrumb">
+               		<div class="row">
+                  		<div class="col-12 d-flex no-block align-items-center">
+                     		<div class="ml-auto text-right">
+                        		<nav aria-label="breadcrumb">
+                           			<ol class="breadcrumb">
+                              			<li class="breadcrumb-item"><a href="https://gs.alexu.edu.eg/FCDS/registrar_remove.php?un=6130cd729530abe7359b408da46bf544">Previous</a></li>
+                              			<li class="breadcrumb-item active" aria-current="page">Delete Course Registration</li>
+                           			</ol>
+                        		</nav>
+                     		</div>
+                  		</div>
+               		</div>
+            	</div>
+            	<!-- ============================================================== -->
+            	<!-- End Bread crumb and right sidebar toggle -->
+            	<!-- ============================================================== -->
+            	<!-- ============================================================== -->
+            	<!-- Container fluid  -->
+            	<!-- ============================================================== -->
+            	<div class="container-fluid">
+	            	<!-- ============================================================== -->
+               		<!-- Start Page Content -->
+               		<!-- ============================================================== -->
+               		<div class="row">
+                  		<div class="col-12">
+                     		<div class="card">
+                        		<div class="card-body">
+									<table style="margin:auto; width:80%">
+										<tbody><tr>
+											<td style="text-align:right;"><span style="color:red; font-weight:bold;"><strong>2401251913</strong></span><em><strong> : </strong></em><em><strong>كود الطالب</strong></em></td>
+										</tr>
+										
+										<tr>
+											<td><br></td>
+										</tr>
+										
+										<tr>
+											<td style="text-align:right"><em><strong> : </strong></em><strong><em>الصورة الشخصية</em></strong></td>
+										</tr>
+										<tr>
+											<td align="right" style="height:180px; text-align:center; border:1px solid #aaa; border-radius: 0; font-size: 100%;"><img src="./Delete Course Registration Page_files/25142304.jpg" alt="Personal Picture" width="150" align="center" height="180" border="0"></td>
+										</tr>
+										
+										<tr>
+											<td style="text-align:right;"><em><strong> : </strong></em><em><strong>إسم الطالب</strong></em></td>
+										</tr>
+										<tr>
+											<td style="height:40px; width:100%; padding:0px; text-align:center; background-color: red; color:white; border:1px solid #F0F0F0; border-radius: 4px; font-weight: bold;">محمد سالم رحومه يوسف إبراهيم</td>
+										</tr>
+										
+										<tr>
+											<td align="right"><em><strong> : </strong></em><em><strong>إسم الطالب بالإنجليزية</strong></em></td>
+										</tr>
+										<tr>
+											<td style="height:40px; width:100%; padding:0px; text-align:center; background-color: red; color:white; border:1px solid #F0F0F0; border-radius: 4px; font-weight: bold;"></td>
+										</tr>
+										
+										<tr>
+											<td style="text-align:right;"><em><strong> : </strong></em><em><strong>البرنامج</strong></em></td>
+										</tr>
+										<tr>
+											<td style="height:40px; width:100%; padding:0px; text-align:center; background-color: green; color:white; border:1px solid #F0F0F0; border-radius: 4px; font-weight: bold;">برنامج الحوسبة وعلوم البيانات</td>
+										</tr>
+										
+										<tr>
+											<td style="text-align:right;"><em><strong> : </strong></em><em><strong>المستوي الدراسي للطالب</strong></em></td>
+										</tr>
+										<tr>
+											<td style="height:40px; width:100%; padding:0px; text-align:center; background-color: green; color:white; border:1px solid #F0F0F0; border-radius: 4px; font-weight: bold;">الأول</td>
+										</tr>
+										
+										<tr>
+											<td style="text-align:right;"><em><strong> : </strong></em><em><strong>إختيار المقرر المسجل المطلوب حذفه</strong></em></td>
+										</tr>
+										<tr>
+											<td><span style="text-align:center; font-weight:bold;"><select id="courseBox" name="courseBox" style="width: 100%;" data-select2-id="courseBox" tabindex="-1" class="select2-hidden-accessible" aria-hidden="true"><option value="" data-select2-id="2">Select Registered Course to Remove</option><option value="95f9aa1985f5484afe638c0b01ad7be4" data-select2-id="4">02-24-00101 - Linear Algebra - 2026/2027 - Fall Group : 3 ( GN ) </option><option value="d0850f62f15b1835013ec8c296d7f37d" data-select2-id="5">02-24-01202 - Data Science Methodology - 2026/2027 - Fall Group : 1 ( GN ) </option><option value="b50b71a30ac55be599f284f360c4653c" data-select2-id="6">02-24-00202 - Introduction to Databases - 2026/2027 - Fall Group : 1 ( GN ) </option><option value="93778ad9dbbde2189b23497921eb3101" data-select2-id="7">02-24-00201 - Probability and Statistics II - 2026/2027 - Fall Group : 1 ( GN ) </option><option value="e7954427a83f157889d692a422454a5a" data-select2-id="8">TTC001 - Technology Transfer and Commercialization (TTC) - 2026/2027 - Fall Group : 1 ( GN ) </option><option value="af416da4c0af3d5ebb39d923232cdea4" data-select2-id="9">POM100 - Principles of Management  - 2026/2027 - Fall Group : 1 ( GN ) </option></select><span class="select2 select2-container select2-container--default select2-container--above" dir="ltr" data-select2-id="1" style="width: 100%;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-courseBox-container"><span class="select2-selection__rendered" id="select2-courseBox-container" role="textbox" aria-readonly="true" title="Select Registered Course to Remove">Select Registered Course to Remove</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span></span></td>
+										</tr>																			
+									</tbody></table>
+								</div>
+								<div class="card-body">
+									<table style="margin:auto; width:80%">
+									   	<tbody><tr>
+										   	<td style="text-align:center;"><button type="submit" onclick="deleteRecord();" class="btn-danger" style="width:33%; border-radius: 4px; font-weight:bold;">حذف تسجيل المقرر</button></td>
+									   	</tr>
+									</tbody></table>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- ============================================================== -->
+            	<!-- End Container fluid  -->
+            	<!-- ============================================================== -->
+      		</div>
+			<!-- ============================================================== -->
+			<!-- End Page wrapper  -->
+			<!-- ============================================================== -->
+		</div>
+		<!-- ============================================================== -->
+		<!-- End Wrapper -->
+		<!-- ============================================================== -->
+		<!-- ============================================================== -->
+		<!-- All Jquery -->
+		<!-- ============================================================== -->
+		<script src="./Delete Course Registration Page_files/jquery.min.js.download"></script>
+		<!-- Bootstrap tether Core JavaScript -->
+		<script src="./Delete Course Registration Page_files/popper.min.js.download"></script>
+		<script src="./Delete Course Registration Page_files/bootstrap.min.js.download"></script>
+		<!-- slimscrollbar scrollbar JavaScript -->
+		<script src="./Delete Course Registration Page_files/perfect-scrollbar.jquery.min.js.download"></script>
+		<script src="./Delete Course Registration Page_files/sparkline.js.download"></script>
+		<!--Wave Effects -->
+		<script src="./Delete Course Registration Page_files/waves.js.download"></script>
+		<!--Menu sidebar -->
+		<script src="./Delete Course Registration Page_files/sidebarmenu.js.download"></script>
+		<!--Custom JavaScript -->
+		<script src="./Delete Course Registration Page_files/custom.min.js.download"></script>
+		<!-- this page js -->
+        <script src="./Delete Course Registration Page_files/datatable-checkbox-init.js.download"></script>
+        <script src="./Delete Course Registration Page_files/jquery.multicheck.js.download"></script>
+        <script src="./Delete Course Registration Page_files/select2.full.min.js.download"></script>
+		<script src="./Delete Course Registration Page_files/select2.min.js.download"></script>
+        <script>
+    		//***********************************//
+			// For select 2
+			//***********************************//
+			$(".select2").select2();
+			$("#courseBox").select2();
+    	</script>
+   	
+</body></html>

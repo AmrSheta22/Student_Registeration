@@ -34,12 +34,14 @@ Prepare registeration.xlsx:
 
 Small spacing and spelling differences are tolerated. The matcher protects
 course code, group, year and semester and does not submit ambiguous matches.
+Course selection is checked using the portal's option value, so spacing in
+labels such as POM100 cannot cause the final selection check to time out.
 
 START A NEW RUN — first two students in the intelligent-systems program:
 
     python alexu_batch_add_course_registration.py registeration.xlsx --program "برنامج النظم الذكية" --limit 2
 
-Enter your username and password when prompted. The password is hidden.
+Enter your username and password when prompted. The password is visible as you type.
 Omit --limit 2 to process all students. These commands submit real registrations
 for every marked subject in the selected rows.
 
@@ -75,10 +77,18 @@ After an unexpected subject error, the script saves the result, confirms
 logout, logs in again with the same credentials and academic scope in the
 same open Chrome session, and continues with the next subject. It does not
 retry the affected subject. Confirmed results are retained.
+Navigation waits reacquire elements when a page refresh invalidates them.
+Recovery allows up to three login/scope attempts, confirming logout before
+each retry. It never automatically repeats a course registration submission.
 
 If logout cannot be confirmed, reconnection fails, or a checkpoint cannot be
 saved, the run stops and Chrome stays open. Failure diagnostics are saved to
 alexu_batch_registration_failure.png when possible.
+Unexpected-subject log messages include the failing stage. Returning to the
+login page during confirmation/result waits is detected as session loss.
+Recovery follows the portal's own logout link even if a dialog covers it,
+then fills both credential fields and verifies their values immediately before
+submitting login in the same browser operation. Credentials stay in memory.
 
 
 3. CONTINUE AN INTERRUPTED XLSX RUN
@@ -87,23 +97,37 @@ Keep the existing Registration log sheet. Save and close Excel, then use:
 
     python alexu_batch_add_course_registration.py registeration.xlsx --program "برنامج النظم الذكية" --resume
 
-This processes blank/pending requested cells and skips successes and failures,
-including subjects marked "skipped without retry". Do not delete the log or
-start from a fresh copy to resume: doing so loses the record of prior attempts.
+If a failed timeout is logged, --resume starts at the LAST timeout in worksheet
+order and retries that subject first, then processes later pending requests.
+Successful subjects remain skipped. Earlier failures are not retried.
+If no timeout exists, it processes blank/pending requests as before.
+Do not delete the log or start from a fresh copy to resume.
 
 TO START AT A PARTICULAR STUDENT, INCLUDING THEIR REMAINING SUBJECTS:
 
     python alexu_batch_add_course_registration.py registeration.xlsx --program "برنامج النظم الذكية" --resume --start-student 2403258321
 
-Replace 2403258321 with the student ID you want. The starting student is
-included. Later students are processed in input-sheet order.
+Replace 2403258321 with the student ID you want. The script looks for the last
+timeout at or after that student. If none exists, that student is included
+and later students are processed in input-sheet order.
 
-Add --limit 2 to process only two students from that starting position.
+Add --limit 2 to process only two students from the actual resume position.
 Completed students still count toward this limit.
 
 TO RETRY CONFIRMED FAILURES AS WELL AS PENDING REQUESTS:
 
     python alexu_batch_add_course_registration.py registeration.xlsx --program "برنامج النظم الذكية" --resume --retry-failed
+
+TO RETRY FAILURES ONLY (NO PENDING REQUESTS):
+
+    python alexu_batch_add_course_registration.py registeration.xlsx --program "برنامج النظم الذكية" --retry
+
+--retry requires an existing Registration log and works only with XLSX.
+It processes requested subjects whose log cell starts with Failed, including
+timeouts and unconfirmed failures. It skips succeeded, pending and blank cells.
+No --resume is needed. --start-student and --limit can restrict the student range.
+Check unconfirmed outcomes on the portal before using --retry, since this flag
+explicitly retries them. New results replace the selected failed log cells.
 
 Successes are always skipped. Before retrying an unconfirmed result, check
 that student/subject on the portal and update its log cell:
@@ -112,9 +136,12 @@ that student/subject on the portal and update its log cell:
 - Failed: <reason>: rejection is confirmed.
 - pending: not registered, and you want another attempt.
 
-Older cells containing "outcome unconfirmed" without "skipped without retry"
-must be resolved before normal resume. New skipped/unconfirmed cells can be
-skipped during normal resume, but must be resolved before --retry-failed.
+The last timeout is retried even if its outcome is unconfirmed. Check the
+portal first and mark it succeeded if registration actually completed.
+Other unconfirmed outcomes still require review before explicitly retrying
+them with --retry-failed. Automatic recovery within a running batch continues
+to skip an unexpected failed subject; restarting with --resume retries the
+last timeout. --retry-failed instead processes all eligible failed requests.
 
 Do not reorder input rows or change course headers independently of the log.
 Resume checks that log headers and student IDs still match the input.
@@ -122,6 +149,9 @@ Resume checks that log headers and student IDs still match the input.
 
 4. REGISTRATION OPTIONS
 -----------------------
+Registration waits allow up to 180 seconds per operation, not per subject.
+Logout/recovery checks and file-lock retries keep their separate limits.
+
     --program "<exact program name>"   Choose the department/program.
     --year "2026/2027"                 Academic year; current default shown.
     --semester Fall                    Semester; current default shown.
@@ -130,7 +160,8 @@ Resume checks that log headers and student IDs still match the input.
     --resume                           Continue using the existing XLSX log.
     --start-student <ID>                Start at this ID, inclusively.
     --retry-failed                     With --resume, retry confirmed failures.
-    --username <username>              Supply the username; password stays hidden.
+    --retry                            Retry only failures in Registration log.
+    --username <username>              Supply the username; password is prompted.
 
 Without --sheet, the first worksheet is used as input.
 Resume, start-student and limit behavior above applies to XLSX registration.
@@ -165,6 +196,59 @@ Every CSV run resets previous statuses to pending. CSV has no log-based resume
 or per-subject automatic logout/relogin recovery. Do not use the XLSX resume
 options for CSV batches; prepare a CSV containing only students you intend
 to process and verify previous registrations before repeating a run.
+
+
+REMOVE COURSE REGISTRATIONS
+---------------------------
+Use the separate alexu_batch_remove_course_registration.py script.
+Prepare removal.xlsx with the same ID/course-header layout as registration.
+Mark ONLY subjects you intend to DELETE with 1; leave others blank or 0.
+Do not reuse addition request marks unless you intend to remove those subjects.
+
+First two students, intelligent-systems example:
+
+    python alexu_batch_remove_course_registration.py removal.xlsx --program "برنامج النظم الذكية" --limit 2
+
+The script opens Remove Course Registration, enters the student ID, selects
+the registered course and confirms "Yes, delete it!". It returns to the ID
+form after each subject, then repeats. These are real removal requests.
+The session-specific link is read from the portal; no token is hardcoded.
+
+Results are checkpointed in a separate Removal log sheet. Successful removal
+is succeeded; unavailable subjects are Failed: not registered or unavailable
+for removal. Portal error notifications are logged as Failed: <reason>.
+The supplied deletion page reloads after the request without a success dialog.
+The script waits for that reload and checks the refreshed registered-course
+list: absence of the selected course confirms removal; a course still listed
+is logged as failed. A redirect alone is not treated as success because the
+portal also redirects after AJAX errors. A success dialog is also supported.
+The script waits for the page to finish loading, then follows the visible
+Previous link to registrar_remove.php using its current session ID. It waits
+for the student-ID field before proceeding. It also accepts an automatic
+return to the ID form. Unconfirmed outcomes still require review.
+
+Continue a removal run with:
+
+    python alexu_batch_remove_course_registration.py removal.xlsx --program "برنامج النظم الذكية" --resume
+
+The same --year, --semester, --sheet, --limit, --start-student and --retry-failed
+options apply. --resume retries the last logged timeout, skips successes and
+then continues pending requests. Verify unconfirmed removals before retrying.
+Never use an addition log as evidence that removal succeeded.
+
+For one subject across a CSV batch:
+
+    python alexu_batch_remove_course_registration.py data.csv
+
+Select one registered course from the first valid student. Results are stored
+in course_removal_status. CSV runs reset that column; XLSX resume options do
+not apply to CSV. As with CSV addition, recovery is limited to form recovery.
+
+Removal keeps the same 180-second operation waits, brief-error capture,
+bounded XLSX login/scope recovery and visible detached Chrome behavior.
+NEVER CLOSE THE WEBSITE until logout is completed and confirmed.
+
+    python alexu_batch_remove_course_registration.py --help
 
 
 6. GET COMPLETED CREDIT HOURS (CSV)
@@ -207,7 +291,7 @@ or Chrome change may require code updates.
 
 7. CREDENTIALS AND COMMON PROBLEMS
 ---------------------------------
-Prefer the interactive hidden password prompt. Both scripts also read
+The interactive password prompt shows what you type. Both scripts also read
 ALEXU_USERNAME, ALEXU_PASSWORD and ALEXU_PROGRAM from environment variables.
 Do not put passwords in source files or command-line arguments.
 XLSX registration can run without prompts when credentials and program are

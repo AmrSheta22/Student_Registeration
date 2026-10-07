@@ -20,7 +20,6 @@ Safety:
 from __future__ import annotations
 
 import argparse
-import getpass
 import os
 import re
 import sys
@@ -34,6 +33,7 @@ from selenium import webdriver
 from selenium.common.exceptions import (
     StaleElementReferenceException,
     TimeoutException,
+    WebDriverException,
 )
 from selenium.webdriver import ChromeOptions
 from selenium.webdriver.common.by import By
@@ -62,6 +62,21 @@ def log(message: str) -> None:
     print(f"[alexu] {message}", flush=True)
 
 
+class DomWait(WebDriverWait):
+    """Re-evaluate conditions when navigation invalidates a DOM node."""
+    def until(self, method, message=''):
+        def refreshed(driver):
+            try:
+                return method(driver)
+            except StaleElementReferenceException:
+                return False
+            except WebDriverException as exc:
+                if 'Node with given id does not belong to the document' in str(exc):
+                    return False
+                raise
+        return super().until(refreshed, message)
+
+
 def normalize_label(value: str) -> str:
     """Ignore whitespace, Unicode presentation and punctuation differences."""
     return re.sub(r"[\W_]+", "", unicodedata.normalize("NFKC", value).casefold())
@@ -74,29 +89,38 @@ def click_select2_option(
     option_text: str,
 ) -> None:
     """Select a unique label, tolerating Unicode/spacing differences."""
-    arrow = wait.until(
-        EC.element_to_be_clickable(
-            (
-                By.XPATH,
-                f"//*[@id='{rendered_container_id}']"
-                "/following-sibling::span[contains(@class,'select2-selection__arrow')]",
-            )
-        )
-    )
-    arrow.click()
+    def selected_label(driver):
+        rendered = driver.find_element(By.ID, rendered_container_id)
+        return (rendered.get_attribute('title') or rendered.text or '').strip()
+    current_label = wait.until(selected_label)
+    if normalize_label(current_label) == normalize_label(option_text):
+        log(f"Already selected {option_text!r}")
+        return
+    def open_options(driver):
+        if any(item.is_displayed() for item in driver.find_elements(By.CSS_SELECTOR, f'#{results_id}')):
+            return True
+        arrow = EC.element_to_be_clickable((By.XPATH, f"//*[@id='{rendered_container_id}']/following-sibling::span[contains(@class,'select2-selection__arrow')]"))(driver)
+        if not arrow:
+            return False
+        arrow.click()
+        return True
+    wait.until(open_options)
     available: list[str] = []
     def matching_option(driver):
+        selected = driver.find_element(By.ID, rendered_container_id)
+        if normalize_label(selected.get_attribute('title') or selected.text) == normalize_label(option_text):
+            return True
         options = driver.find_elements(By.CSS_SELECTOR, f"#{results_id} li")
         available[:] = [item.text for item in options]
         matches = [item for item in options if normalize_label(item.text) == normalize_label(option_text)]
         if len(matches) == 1 and matches[0].is_displayed() and matches[0].is_enabled():
-            return matches[0]
+            matches[0].click()
+            return True
         return False
     try:
-        option = wait.until(matching_option)
+        wait.until(matching_option)
     except TimeoutException as exc:
         raise ValueError(f"Requested selection {option_text!r} unavailable or ambiguous; portal options: {available}") from exc
-    option.click()
 
     wait.until(
         lambda driver: driver.find_element(By.ID, rendered_container_id)
@@ -119,11 +143,20 @@ def xpath_literal(value: str) -> str:
 def logout_if_possible(driver: webdriver.Chrome, wait: WebDriverWait) -> bool:
     """Log out through the avatar dropdown, leaving the resulting tab open."""
     try:
+        # Follow the page's actual logout link even when a modal covers it.
+        logout_links = driver.find_elements(By.CSS_SELECTOR, "a[href*='logout.php']")
+        if logout_links:
+            driver.get(logout_links[0].get_attribute('href'))
+            wait.until(EC.visibility_of_element_located((By.ID, 'username')))
+            wait.until(EC.visibility_of_element_located((By.ID, 'password')))
+            wait.until(lambda current: not current.find_elements(By.CSS_SELECTOR, 'a.pro-pic'))
+            log('Logged out successfully; the Chrome tab remains open.')
+            return True
         avatar = wait.until(
             EC.element_to_be_clickable(
                 (
                     By.XPATH,
-                    "//a[contains(@class,'pro-pic')][.//img[@alt='user']]",
+                    "//a[contains(@class,'pro-pic')]",
                 )
             )
         )
@@ -133,8 +166,7 @@ def logout_if_possible(driver: webdriver.Chrome, wait: WebDriverWait) -> bool:
             EC.element_to_be_clickable(
                 (
                     By.XPATH,
-                    "//a[contains(@class,'dropdown-item') and "
-                    "contains(@href,'logout.php')][contains(normalize-space(.),'Logout')]",
+                    "//a[contains(@href,'logout.php')]",
                 )
             )
         )
@@ -440,7 +472,7 @@ def resolve_credentials(args: argparse.Namespace) -> tuple[str, str]:
             raise ValueError(
                 "Set ALEXU_PASSWORD when running non-interactively"
             )
-        password = getpass.getpass("Alexandria portal password: ")
+        password = input("Alexandria portal password: ")
     if not username or not password:
         raise ValueError("Username and password must not be empty")
     return username, password

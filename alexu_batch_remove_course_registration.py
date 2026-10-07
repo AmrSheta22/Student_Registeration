@@ -1,4 +1,4 @@
-"""Interactively register one selected course for students in a CSV.
+"""Remove marked XLSX subjects or one selected registered course from a CSV.
 
 Workflow:
 1. Prompt for portal credentials and the student program.
@@ -6,7 +6,7 @@ Workflow:
 3. Find the first valid student in the input CSV and list that student's
    available courses.
 4. Prompt for one course and attempt it for every valid student.
-5. Checkpoint ``course_registration_status`` with Pandas after every row.
+5. Checkpoint ``course_removal_status`` with Pandas after every row.
 6. Log out normally while leaving the Chrome tab open.
 
 Credentials are kept in memory only. The script never calls ``close()`` or
@@ -49,12 +49,12 @@ from student_completed_hours_pipeline import (
 )
 
 
-STATUS_COLUMN = "course_registration_status"
+STATUS_COLUMN = "course_removal_status"
 STATUS_PENDING = "pending"
 STATUS_SUCCEEDED = "succeeded"
 STATUS_FAILED = "failed"
 WAIT_SECONDS = 180
-FAILURE_SCREENSHOT = Path("alexu_batch_registration_failure.png")
+FAILURE_SCREENSHOT = Path("alexu_batch_removal_failure.png")
 
 
 def wait_for_dom(driver: webdriver.Chrome, timeout: int = WAIT_SECONDS) -> None:
@@ -228,7 +228,7 @@ class PortalSession:
         self.click_navigation((By.CSS_SELECTOR, "button[type='submit'][name='Accept']"), 'accepting academic scope')
         wait_for_dom(self.driver)
 
-        self.click_navigation((By.XPATH, "//a[contains(@href,'registrar_form.php')][.//*[contains(normalize-space(.),'Add Course Registration') or contains(normalize-space(.),'Add Registration')]]"), 'opening registration form')
+        self.click_navigation((By.XPATH, "//a[contains(@href,'registrar_remove.php')][.//*[contains(normalize-space(.),'Remove Course Registration') or contains(normalize-space(.),'Remove Registration')]]"), 'opening removal form')
         wait_for_dom(self.driver)
         self.wait.until(EC.visibility_of_element_located((By.ID, "scodeBox")))
         log("Opened the clean student-code form.")
@@ -285,7 +285,7 @@ class PortalSession:
         for option in options:
             value = (option.get_attribute("value") or "").strip()
             text = option.text.strip()
-            if value and text and text != "Select Course to Add":
+            if value and text and text != "Select Registered Course to Remove":
                 courses.append(Course(value=value, text=text))
         return courses
 
@@ -318,7 +318,7 @@ class PortalSession:
         )
         return True
 
-    def submit_registration(self) -> tuple[bool, str]:
+    def submit_removal(self) -> tuple[bool, str]:
         self.stage = 'waiting for previous error notification to clear'
         # An old error toast must disappear before another submission.
         self.wait.until(lambda current: not any(e.is_displayed() for e in current.find_elements(By.CSS_SELECTOR, 'article.alertify-log-error')))
@@ -351,12 +351,12 @@ class PortalSession:
             window.__registrationErrorsObserver.observe(document.documentElement,
                 {childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['class']});
         """)
-        self.stage = 'clicking registration button'
+        self.stage = 'clicking removal button'
         self.wait.until(
             EC.element_to_be_clickable(
                 (
                     By.CSS_SELECTOR,
-                    "button[type='submit'][onclick='addRecord();']",
+                    "button[type='submit'][onclick='deleteRecord();']",
                 )
             )
         ).click()
@@ -365,21 +365,29 @@ class PortalSession:
             messages = current.execute_script('return window.__registrationErrors || []')
             if messages:
                 return ('error', messages[-1])
-            titles = current.find_elements(By.XPATH, "//*[@id='swal2-title' and normalize-space(.)='Add the Course Registration?']")
+            titles = current.find_elements(By.XPATH, "//button[contains(@class,'swal2-confirm') and normalize-space(.)='Yes, delete it!']")
             if titles and titles[0].is_displayed():
                 return ('confirm', '')
             return False
-        self.stage = 'waiting for registration confirmation'
+        self.stage = 'waiting for removal confirmation'
         kind, detail = self.wait.until(confirmation_or_error)
         if kind == 'error':
             return False, detail
-        self.stage = 'confirming registration submission'
+        self.stage = 'confirming removal submission'
+        selected_label = self.driver.execute_script("""
+            const box = document.getElementById('courseBox');
+            return box && box.selectedIndex >= 0 ? box.options[box.selectedIndex].text : '';
+        """)
+        if not selected_label:
+            raise RuntimeError('No selected course label available before removal confirmation')
+        document_token = str(time.time_ns())
+        self.driver.execute_script('window.__removalDocumentToken = arguments[0]', document_token)
         self.wait.until(
             EC.element_to_be_clickable(
                 (
                     By.XPATH,
                     "//button[contains(@class,'swal2-confirm') and "
-                    "normalize-space(.)='Yes, add the course!']",
+                    "normalize-space(.)='Yes, delete it!']",
                 )
             )
         ).click()
@@ -392,10 +400,12 @@ class PortalSession:
             success = current.find_elements(
                 By.XPATH,
                 "//*[@id='swal2-title' and "
-                "normalize-space(.)='Course Registration Added']",
+                "(contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'deleted') or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'removed'))]",
             )
-            if success and success[0].is_displayed():
-                return ("success", "Course Registration Added")
+            success_icons = current.find_elements(By.CSS_SELECTOR, '.swal2-success')
+            # The success icon is authoritative; deletion titles vary by portal page.
+            if any(icon.is_displayed() for icon in success_icons):
+                return ("success", "Course Registration Removed")
 
             for error in current.find_elements(
                 By.CSS_SELECTOR,
@@ -407,9 +417,22 @@ class PortalSession:
                         "error",
                         (centers[0].text.strip() if centers else error.text.strip()) or "Portal rejected request",
                     )
+            # deleteRecord redirects on BOTH AJAX completion and AJAX error.
+            # Wait for a new document, then verify the refreshed registered list.
+            reloaded = current.execute_script("return document.readyState === 'complete' && window.__removalDocumentToken !== arguments[0]", document_token)
+            if reloaded:
+                previous = current.find_elements(By.XPATH, "//a[contains(@href,'registrar_remove.php?') and normalize-space(.)='Previous']")
+                if any(link.is_displayed() for link in previous):
+                    boxes = current.find_elements(By.ID, 'courseBox')
+                    if boxes:
+                        options = boxes[0].find_elements(By.TAG_NAME, 'option')
+                        if any(normalize_label(option.text) == normalize_label(selected_label) for option in options):
+                            return ('error', 'course remains registered after deletion request')
+                        return ('success', 'selected course no longer appears in the refreshed registered-course list')
+                    return ('error', 'outcome unconfirmed: refreshed page has no registered-course list; verify portal before retrying')
             return False
 
-        self.stage = 'waiting for registration result'
+        self.stage = 'waiting for deletion reload and verifying registered courses'
         try:
             kind, detail = self.wait.until(outcome)
         except TimeoutException:
@@ -422,24 +445,16 @@ class PortalSession:
             return False, detail
 
         self.stage = 'dismissing confirmed success'
-        self.wait.until(
-            EC.element_to_be_clickable(
-                (
-                    By.XPATH,
-                    "//button[contains(@class,'swal2-confirm') and "
-                    "normalize-space(.)='OK']",
-                )
-            )
-        ).click()
-        self.wait.until(
-            EC.invisibility_of_element_located(
-                (
-                    By.XPATH,
-                    "//*[@id='swal2-title' and "
-                    "normalize-space(.)='Course Registration Added']",
-                )
-            )
-        )
+        def dismiss_success(current):
+            if not any(icon.is_displayed() for icon in current.find_elements(By.CSS_SELECTOR, '.swal2-success')):
+                return True  # The dialog may dismiss itself.
+            for button in current.find_elements(By.CSS_SELECTOR, '.swal2-popup .swal2-confirm'):
+                if button.is_displayed() and button.is_enabled():
+                    button.click()
+                    return True
+            return False
+        self.wait.until(dismiss_success)
+        self.wait.until(lambda current: not any(icon.is_displayed() for icon in current.find_elements(By.CSS_SELECTOR, '.swal2-success')))
         return True, detail
 
     def check_session(self) -> None:
@@ -447,25 +462,36 @@ class PortalSession:
             raise RuntimeError(f'Portal returned to login page during {self.stage}')
 
     def return_to_student_form(self) -> None:
-        previous = self.wait.until(
-            EC.element_to_be_clickable(
-                (
-                    By.XPATH,
-                    "//a[contains(@href,'registrar_form.php') and "
-                    "normalize-space(.)='Previous']",
-                )
-            )
-        )
-        previous.click()
-        wait_for_dom(self.driver)
-        self.wait.until(EC.visibility_of_element_located((By.ID, "scodeBox")))
+        self.stage = 'waiting for removal page to finish loading'
+        self.wait.until(lambda current: current.execute_script('return document.readyState') == 'complete')
+        def clean_form(current):
+            return (any(box.is_displayed() for box in current.find_elements(By.ID, 'scodeBox'))
+                    and not any(box.is_displayed() for box in current.find_elements(By.ID, 'courseBox')))
+        self.stage = 'locating session-specific Previous link'
+        def previous_target(current):
+            if current.execute_script('return document.readyState') != 'complete':
+                return False
+            links = current.find_elements(By.XPATH,
+                "//a[contains(@href,'registrar_remove.php?') and normalize-space(.)='Previous']")
+            for link in links:
+                if link.is_displayed():
+                    return link.get_attribute('href')
+            return '__already_on_form__' if clean_form(current) else False
+        href = self.wait.until(previous_target, 'Removal page has no visible session-specific Previous link')
+        if href != '__already_on_form__':
+            self.stage = 'following Previous link to student-ID form'
+            # Follow only the supplied Previous anchor, never an arbitrary sidebar link.
+            self.driver.get(href)
+            self.wait.until(lambda current: current.execute_script('return document.readyState') == 'complete')
+            self.wait.until(EC.visibility_of_element_located((By.ID, 'scodeBox')))
+        log('Returned through Previous to the removal student-ID form.')
 
     def recover_student_form(self) -> bool:
         if self.driver.find_elements(By.ID, "scodeBox"):
             return True
         previous = self.driver.find_elements(
             By.XPATH,
-            "//a[contains(@href,'registrar_form.php') and "
+            "//a[contains(@href,'registrar_remove.php') and "
             "normalize-space(.)='Previous']",
         )
         if previous:
@@ -565,16 +591,15 @@ def match_course(header: str, courses: list[Course]) -> Course | None:
 class WorkbookBatch:
     """Keep input sheets intact and checkpoint subject results in a log sheet."""
     def __init__(self, path: Path, sheet: str | None, limit: int | None, year: str, semester: str,
-                 resume: bool = False, start_student: str | None = None, retry_failed: bool = False,
-                 retry_only: bool = False):
+                 resume: bool = False, start_student: str | None = None, retry_failed: bool = False):
         from openpyxl import load_workbook
         self.path = path.resolve()
         self.book = load_workbook(self.path)
         if sheet and sheet not in self.book.sheetnames:
             raise ValueError(f'Worksheet not found: {sheet}')
         self.source = self.book[sheet] if sheet else self.book.worksheets[0]
-        if self.source.title == 'Registration log':
-            raise ValueError('Choose an input worksheet, not Registration log')
+        if self.source.title == 'Removal log':
+            raise ValueError('Choose an input worksheet, not Removal log')
         self.headers = [str(c.value or '').strip() for c in self.source[1]]
         if normalize_label(self.headers[0]) not in {'id', 'studentid'}:
             raise ValueError('First column must be ID or student_id')
@@ -610,18 +635,14 @@ class WorkbookBatch:
             self.rows = self.rows[positions[0]:]
         if not self.rows:
             raise ValueError('No students found')
-        existing = 'Registration log' in self.book.sheetnames
-        if retry_only:
-            if not existing:
-                raise ValueError('--retry requires an existing Registration log worksheet')
-            resume = True
+        existing = 'Removal log' in self.book.sheetnames
         if existing and not resume:
-            raise ValueError('Registration log already exists; use a fresh workbook copy to prevent accidental repeat submissions')
+            raise ValueError('Removal log already exists; use a fresh workbook copy to prevent accidental repeat submissions')
         if retry_failed and not resume:
             raise ValueError('--retry-failed requires --resume')
         from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
-        self.sheet = self.book['Registration log'] if existing else self.book.create_sheet('Registration log')
+        self.sheet = self.book['Removal log'] if existing else self.book.create_sheet('Removal log')
         if existing:
             logged_headers = [str(c.value or '').strip() for c in self.sheet[1]]
             if logged_headers != self.headers:
@@ -629,7 +650,7 @@ class WorkbookBatch:
         else:
             self.sheet.append(self.headers)
         last_timeout = None
-        if existing and resume and not retry_failed and not retry_only:
+        if existing and resume and not retry_failed:
             # Sequential runs follow worksheet order; find the last failed
             # timeout in the selected starting range before applying --limit.
             for position, (row, code, columns) in enumerate(self.rows):
@@ -664,16 +685,14 @@ class WorkbookBatch:
             pending = []
             for column in columns:
                 status = str(self.sheet.cell(row, column).value or '').strip()
-                if retry_only and not status.casefold().startswith('failed'):
-                    continue
                 retry_last_timeout = (row, column) == last_timeout
-                if 'outcome unconfirmed' in status.casefold() and not retry_last_timeout and not retry_only:
+                if 'outcome unconfirmed' in status.casefold() and not retry_last_timeout:
                     if 'skipped without retry' in status.casefold() and not retry_failed:
                         continue
                     raise ValueError(f'Unconfirmed result for student {code}, column {column}. Verify on portal and set the log cell to succeeded, Failed: <reason>, or pending before resuming.')
                 if status.casefold() == 'succeeded':
                     continue
-                if status.casefold().startswith('failed') and not retry_failed and not retry_last_timeout and not retry_only:
+                if status.casefold().startswith('failed') and not retry_failed and not retry_last_timeout:
                     continue
                 if status and status.casefold() != 'pending' and not status.casefold().startswith('failed'):
                     raise ValueError(f'Unexpected log status for student {code}, column {column}: {status}')
@@ -707,7 +726,7 @@ class WorkbookBatch:
 
 def run_workbook(args, username, password, program):
     batch = WorkbookBatch(args.csv_path, args.sheet, args.limit, args.year, args.semester,
-                          args.resume, args.start_student, args.retry_failed, args.retry)
+                          args.resume, args.start_student, args.retry_failed)
     if not any(columns for _, _, columns in batch.rows):
         log('No unprocessed subjects in the selected students; no portal session opened.')
         return 0
@@ -756,12 +775,13 @@ def run_workbook(args, username, password, program):
                     if not missing_student:
                         course = match_course(header, portal.available_courses())
                         if course is None or not portal.select_course(course):
-                            status = 'Failed: already registered or group closed'
+                            status = 'Failed: not registered or unavailable for removal'
                         else:
                             log(f'Student {code}: submitting {course.text}')
-                            succeeded, detail = portal.submit_registration()
+                            succeeded, detail = portal.submit_removal()
                             status = 'succeeded' if succeeded else f'Failed: {detail}'
-                        portal.wait.until(EC.presence_of_element_located((By.ID, 'courseBox')))
+                        portal.return_to_student_form()
+                        student_open = False
                 except Exception as exc:
                     failure = exc
                     # Keep an already confirmed outcome if subsequent page recovery failed.
@@ -787,7 +807,7 @@ def run_workbook(args, username, password, program):
         log('Interrupted; completed subject checkpoints retained.')
         return 130
     except Exception as exc:
-        log(f'Workbook registration stopped: {type(exc).__name__}: {exc}')
+        log(f'Workbook removal stopped: {type(exc).__name__}: {exc}')
         if portal:
             try:
                 portal.driver.save_screenshot(str(FAILURE_SCREENSHOT.resolve()))
@@ -801,7 +821,7 @@ def run_workbook(args, username, password, program):
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Register requested XLSX subjects per student, or choose one course for a legacy CSV batch."
+        description="Remove requested XLSX subjects per student, or choose one registered course for a legacy CSV batch."
     )
     parser.add_argument(
         "csv_path",
@@ -826,7 +846,6 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--resume', action='store_true', help='Preserve successes; restart at the last timeout, or process blank/pending requests if none')
     parser.add_argument('--start-student', help='Start at this student ID, inclusively; --limit applies from here')
     parser.add_argument('--retry-failed', action='store_true', help='With --resume, also retry confirmed failures; never repeat successes')
-    parser.add_argument('--retry', action='store_true', help='Retry only Failed cells in the existing Registration log; skip successes and pending requests')
     return parser.parse_args()
 
 
@@ -837,9 +856,6 @@ def main() -> int:
         sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
 
     args = parse_arguments()
-    if args.retry and args.csv_path.suffix.lower() != '.xlsx':
-        print('--retry requires an XLSX workbook with a Registration log worksheet', file=sys.stderr)
-        return 2
     try:
         # Reuse the exact credential and program resolution logic from the
         # completed-hours pipeline.
@@ -885,23 +901,23 @@ def main() -> int:
                         "Selected course is unavailable for this student."
                     )
                 else:
-                    succeeded, detail = portal.submit_registration()
+                    succeeded, detail = portal.submit_removal()
                     if succeeded:
                         status = STATUS_SUCCEEDED
                         log(
                             f"[{position}/{len(batch.dataframe)}] "
-                            "Registration succeeded."
+                            "Removal succeeded."
                         )
                     else:
                         log(
                             f"[{position}/{len(batch.dataframe)}] "
-                            f"Registration failed: {detail}"
+                            f"Removal failed: {detail}"
                         )
                 portal.return_to_student_form()
             except Exception as exc:
                 log(
                     f"[{position}/{len(batch.dataframe)}] "
-                    f"Registration failed: {type(exc).__name__}: {exc}"
+                    f"Removal failed: {type(exc).__name__}: {exc}"
                 )
                 if not portal.recover_student_form():
                     raise RuntimeError(
@@ -915,7 +931,7 @@ def main() -> int:
                 )
 
         if chosen_course is None:
-            log("No valid student exposed a course list; nothing was submitted.")
+            log("No valid student exposed a registered-course list; nothing was removed.")
         return 0
     except (KeyboardInterrupt, EOFError):
         log("Interactive input was cancelled; checkpointed results were kept.")
@@ -934,3 +950,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

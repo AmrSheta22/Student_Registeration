@@ -1,7 +1,7 @@
 """Operator-gated run: monitor each submission and retain driver for recovery.
 
 Run with python -i so the portal object remains available after any failure.
-Credentials are entered through the existing hidden password prompt.
+Credentials are entered through the shared visible password prompt.
 """
 import alexu_batch_add_course_registration as registration
 

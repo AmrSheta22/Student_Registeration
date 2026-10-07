@@ -77,8 +77,8 @@ $env:ALEXU_PASSWORD="your_password"
 ```
 
 The username can also be supplied with `--username`. The password should use
-the environment variable or the secure interactive prompt so it is not exposed
-in command history.
+the environment variable or the interactive prompt. The prompt displays the
+password as you type.
 
 ## Running the pipeline
 
@@ -232,6 +232,6 @@ These safeguards are intentional requirements:
 - Do not commit usernames, passwords, session tokens, or generated private
   student reports to a public repository.
 - Treat the CSV and PDFs as private student data.
-- Prefer the secure password prompt or an environment variable over a
+- Use the visible password prompt or an environment variable instead of a
   command-line password.
 - Clear credential environment variables after use if the machine is shared.
